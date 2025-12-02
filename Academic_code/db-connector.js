@@ -5,7 +5,7 @@ const mysql = require('mysql2');
 const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10,
-    host: 'classmysql.engr.oregonstate.edu',
+    host: '[domain]',
     user: 'cs340_[ONID]',
     password: '[your_db_password]',
     database: 'cs340_[ONID]'
