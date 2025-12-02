@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Events - Comic-Con Vendor Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #666;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        form {
+            background-color: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        label {
+            display: inline-block;
+            width: 150px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        input[type="text"],
+        select {
+            width: 300px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .delete-btn {
+            background-color: #f44336;
+        }
+        .delete-btn:hover {
+            background-color: #da190b;
+        }
+        .nav {
+            background-color: #333;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            display: inline-block;
+        }
+        .nav a:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <div class="nav">
+        <a href="index.html">Home</a>
+        <a href="items.html">Items</a>
+        <a href="vendors.html">Vendors</a>
+        <a href="events.html">Events</a>
+        <a href="inventories.html">Inventories</a>
+        <a href="vendorevents.html">Vendor Events</a>
+    </div>
+
+    <h1>Vendor Events Management</h1>
+    <p>Track which vendors attend which events and their booth assignments.</p>
+
+    <!-- BROWSE VENDOR EVENTS SECTION -->
+    <h2>Browse Vendor-Event Registrations</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Vendor</th>
+                <th>Event</th>
+                <th>Event Date</th>
+                <th>Booth Number</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="vendorevents-table-body">
+            <tr><td colspan="5">Loading vendor events...</td></tr>
+        </tbody>
+    </table>
+
+
+    <!-- ADD VENDOR TO EVENT SECTION -->
+    <h2>Register Vendor for Event</h2>
+    <form action="/add-vendorevent" method="POST">
+        <label for="add-vendorID">Vendor:</label>
+        <select id="add-vendorID" name="vendorID" required>
+            <option value="">-- Select Vendor --</option>
+        </select><br>
+
+        <label for="add-eventID">Event:</label>
+        <select id="add-eventID" name="eventID" required>
+            <option value="">-- Select Event --</option>
+        </select><br>
+
+        <label for="add-boothNumber">Booth Number:</label>
+        <input type="text" id="add-boothNumber" name="boothNumber" placeholder="e.g., A-12, 315, Table-5"><br>
+
+        <button type="submit">Register Vendor</button>
+    </form>
+
+
+    <!-- UPDATE VENDOR EVENT SECTION -->
+    <h2>Update Vendor-Event Registration</h2>
+    <form action="/update-vendorevent" method="POST" id="updateForm">
+        <input type="hidden" id="update-vendorID-old" name="vendorID_old">
+        <input type="hidden" id="update-eventID-old" name="eventID_old">
+
+        <label for="update-vendorID">Vendor:</label>
+        <select id="update-vendorID" name="vendorID" required>
+            <option value="">-- Select Vendor --</option>
+        </select><br>
+
+        <label for="update-eventID">Event:</label>
+        <select id="update-eventID" name="eventID" required>
+            <option value="">-- Select Event --</option>
+        </select><br>
+
+        <label for="update-boothNumber">Booth Number:</label>
+        <input type="text" id="update-boothNumber" name="boothNumber"><br>
+
+        <button type="submit">Update Registration</button>
+        <button type="button" onclick="clearUpdateForm()">Clear</button>
+    </form>
+    <p><em>Click "Edit" on a registration above to populate this form.</em></p>
+
+
+    <!-- DELETE VENDOR FROM EVENT SECTION -->
+    <h2>Remove Vendor from Event</h2>
+    <p><em>Click "Delete" button next to a registration in the table above.</em></p>
+
+
+    <script>
+        // Load dropdown data and vendor events when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadDropdowns();
+            await loadVendorEvents();
+        });
+
+        // Load vendors and events for dropdowns
+        async function loadDropdowns() {
+            try {
+                // Load vendors
+                const vendorsResponse = await fetch('/api/vendors-dropdown');
+                const vendors = await vendorsResponse.json();
+
+                const vendorSelects = document.querySelectorAll('#add-vendorID, #update-vendorID');
+                vendorSelects.forEach(select => {
+                    vendors.forEach(vendor => {
+                        const option = document.createElement('option');
+                        option.value = vendor.vendorID;
+                        option.textContent = vendor.name;
+                        select.appendChild(option);
+                    });
+                });
+
+                // Load events
+                const eventsResponse = await fetch('/api/events-dropdown');
+                const events = await eventsResponse.json();
+
+                const eventSelects = document.querySelectorAll('#add-eventID, #update-eventID');
+                eventSelects.forEach(select => {
+                    events.forEach(event => {
+                        const option = document.createElement('option');
+                        option.value = event.eventID;
+                        const dateStr = event.date ? new Date(event.date).toLocaleDateString() : '';
+                        option.textContent = `${event.name} (${dateStr})`;
+                        select.appendChild(option);
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading dropdowns:', error);
+            }
+        }
+
+        // Load vendor events data
+        async function loadVendorEvents() {
+            try {
+                const response = await fetch('/api/vendorevents');
+                const vendorEvents = await response.json();
+
+                const tbody = document.getElementById('vendorevents-table-body');
+                tbody.innerHTML = ''; // Clear loading message
+
+                vendorEvents.forEach(ve => {
+                    const row = document.createElement('tr');
+                    const dateStr = ve.eventDate ? new Date(ve.eventDate).toLocaleDateString() : 'N/A';
+                    row.innerHTML = `
+                        <td>${escapeHtml(ve.vendorName)}</td>
+                        <td>${escapeHtml(ve.eventName)}</td>
+                        <td>${dateStr}</td>
+                        <td>${escapeHtml(ve.boothNumber || '')}</td>
+                        <td>
+                            <button onclick="populateUpdateForm(${ve.vendorID}, ${ve.eventID}, '${escapeHtml(ve.boothNumber)}')">Edit</button>
+                            <button class="delete-btn" onclick="confirmDelete(${ve.vendorID}, ${ve.eventID}, '${escapeHtml(ve.vendorName)}', '${escapeHtml(ve.eventName)}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading vendor events:', error);
+                document.getElementById('vendorevents-table-body').innerHTML = '<tr><td colspan="5">Error loading vendor events from database</td></tr>';
+            }
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Populate the Update form
+        function populateUpdateForm(vendorID, eventID, boothNumber) {
+            document.getElementById('update-vendorID-old').value = vendorID;
+            document.getElementById('update-eventID-old').value = eventID;
+            document.getElementById('update-vendorID').value = vendorID;
+            document.getElementById('update-eventID').value = eventID;
+            document.getElementById('update-boothNumber').value = boothNumber;
+
+            document.getElementById('updateForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Clear the Update form
+        function clearUpdateForm() {
+            document.getElementById('updateForm').reset();
+        }
+
+        // Confirm deletion
+        function confirmDelete(vendorID, eventID, vendorName, eventName) {
+            if (confirm(`Are you sure you want to remove "${vendorName}" from "${eventName}"?`)) {
+                alert(`Delete functionality will be implemented in Step 4-5. Would delete vendor ${vendorID} from event ${eventID}`);
+            }
+        }
+    </script>
+
+</body>
+</html>
+<!--
+ * Citation: Adapted from CS340 Activity 2 with
+ * assistance from Claude AI
+ * Date: 11/07/2025
+-->

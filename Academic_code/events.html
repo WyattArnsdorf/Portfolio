@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events - Comic-Con Vendor Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #666;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        form {
+            background-color: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        label {
+            display: inline-block;
+            width: 150px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="date"],
+        input[type="number"] {
+            width: 300px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .delete-btn {
+            background-color: #f44336;
+        }
+        .delete-btn:hover {
+            background-color: #da190b;
+        }
+        .nav {
+            background-color: #333;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            display: inline-block;
+        }
+        .nav a:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <div class="nav">
+        <a href="index.html">Home</a>
+        <a href="items.html">Items</a>
+        <a href="vendors.html">Vendors</a>
+        <a href="events.html">Events</a>
+        <a href="inventories.html">Inventories</a>
+        <a href="vendorevents.html">Vendor Events</a>
+    </div>
+
+    <h1>Events Management</h1>
+    <p>Manage comic conventions and collectible shows.</p>
+
+    <!-- BROWSE EVENTS SECTION -->
+    <h2>Browse Events</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Date</th>
+                <th>Attendance</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="events-table-body">
+            <tr><td colspan="6">Loading events...</td></tr>
+        </tbody>
+    </table>
+
+
+    <!-- ADD EVENT SECTION -->
+    <h2>Add New Event</h2>
+    <form action="/add-event" method="POST">
+        <label for="add-name">Event Name:</label>
+        <input type="text" id="add-name" name="name" required><br>
+
+        <label for="add-location">Location:</label>
+        <input type="text" id="add-location" name="location" required><br>
+
+        <label for="add-date">Date:</label>
+        <input type="date" id="add-date" name="date" required><br>
+
+        <label for="add-attendance">Attendance:</label>
+        <input type="number" id="add-attendance" name="attendance" min="0" placeholder="Leave blank if unknown"><br>
+
+        <button type="submit">Add Event</button>
+    </form>
+
+
+    <!-- UPDATE EVENT SECTION -->
+    <h2>Update Event</h2>
+    <form action="/update-event" method="POST" id="updateForm">
+        <input type="hidden" id="update-eventID" name="eventID">
+
+        <label for="update-name">Event Name:</label>
+        <input type="text" id="update-name" name="name" required><br>
+
+        <label for="update-location">Location:</label>
+        <input type="text" id="update-location" name="location" required><br>
+
+        <label for="update-date">Date:</label>
+        <input type="date" id="update-date" name="date" required><br>
+
+        <label for="update-attendance">Attendance:</label>
+        <input type="number" id="update-attendance" name="attendance" min="0"><br>
+
+        <button type="submit">Update Event</button>
+        <button type="button" onclick="clearUpdateForm()">Clear</button>
+    </form>
+    <p><em>Click "Edit" on an event above to populate this form.</em></p>
+
+
+    <!-- DELETE EVENT SECTION -->
+    <h2>Delete Event</h2>
+    <p><em>Click "Delete" button next to an event in the table above.</em></p>
+
+
+    <script>
+        // Fetch events from database when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/events');
+                const events = await response.json();
+
+                const tbody = document.getElementById('events-table-body');
+                tbody.innerHTML = ''; // Clear loading message
+
+                events.forEach(event => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${event.eventID}</td>
+                        <td>${escapeHtml(event.name)}</td>
+                        <td>${escapeHtml(event.location)}</td>
+                        <td>${event.date ? new Date(event.date).toLocaleDateString() : 'N/A'}</td>
+                        <td>${event.attendance ? event.attendance.toLocaleString() : 'N/A'}</td>
+                        <td>
+                            <button onclick="populateUpdateForm(${event.eventID}, '${escapeHtml(event.name)}', '${escapeHtml(event.location)}', '${event.date}', ${event.attendance || 'null'})">Edit</button>
+                            <button class="delete-btn" onclick="confirmDelete(${event.eventID}, '${escapeHtml(event.name)}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading events:', error);
+                document.getElementById('events-table-body').innerHTML = '<tr><td colspan="6">Error loading events from database</td></tr>';
+            }
+        });
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Populate the Update form when user clicks "Edit"
+        function populateUpdateForm(id, name, location, date, attendance) {
+            document.getElementById('update-eventID').value = id;
+            document.getElementById('update-name').value = name;
+            document.getElementById('update-location').value = location;
+            document.getElementById('update-date').value = date ? date.split('T')[0] : '';
+            document.getElementById('update-attendance').value = attendance || '';
+
+            document.getElementById('updateForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Clear the Update form
+        function clearUpdateForm() {
+            document.getElementById('updateForm').reset();
+        }
+
+        // Confirm deletion
+        function confirmDelete(id, name) {
+            if (confirm(`Are you sure you want to delete "${name}"? This will also remove all vendor registrations for this event.`)) {
+                alert(`Delete functionality will be implemented in Step 4-5. Would delete event ID: ${id}`);
+            }
+        }
+    </script>
+
+</body>
+</html>
+
+<!--
+ * Citation: Adapted from CS340 Activity 2 with
+ * assistance from Claude AI
+ * Date: 11/07/2025
+-->

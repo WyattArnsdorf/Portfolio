@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventories - Comic-Con Vendor Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #666;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        form {
+            background-color: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        label {
+            display: inline-block;
+            width: 150px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 300px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .delete-btn {
+            background-color: #f44336;
+        }
+        .delete-btn:hover {
+            background-color: #da190b;
+        }
+        .nav {
+            background-color: #333;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            display: inline-block;
+        }
+        .nav a:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <div class="nav">
+        <a href="index.html">Home</a>
+        <a href="items.html">Items</a>
+        <a href="vendors.html">Vendors</a>
+        <a href="events.html">Events</a>
+        <a href="inventories.html">Inventories</a>
+        <a href="vendorevents.html">Vendor Events</a>
+    </div>
+
+    <h1>Inventory Management</h1>
+    <p>Manage which vendors sell which items.</p>
+
+    <!-- BROWSE INVENTORIES SECTION -->
+    <h2>Browse Inventory</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Inventory ID</th>
+                <th>Vendor</th>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Condition</th>
+                <th>Price</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="inventories-table-body">
+            <tr><td colspan="7">Loading inventory...</td></tr>
+        </tbody>
+    </table>
+
+
+    <!-- ADD INVENTORY SECTION -->
+    <h2>Add to Inventory</h2>
+    <form action="/add-inventory" method="POST">
+        <label for="add-vendorID">Vendor:</label>
+        <select id="add-vendorID" name="vendorID" required>
+            <option value="">-- Select Vendor --</option>
+        </select><br>
+
+        <label for="add-itemID">Item:</label>
+        <select id="add-itemID" name="itemID" required>
+            <option value="">-- Select Item --</option>
+        </select><br>
+
+        <label for="add-quantity">Quantity:</label>
+        <input type="number" id="add-quantity" name="quantity" min="1" required><br>
+
+        <label for="add-condition">Condition:</label>
+        <input type="text" id="add-condition" name="condition" placeholder="e.g., CGC 9.8, PSA 10, Near Mint"><br>
+
+        <label for="add-price">Price ($):</label>
+        <input type="number" id="add-price" name="price" step="0.01" min="0" required><br>
+
+        <button type="submit">Add to Inventory</button>
+    </form>
+
+
+    <!-- UPDATE INVENTORY SECTION -->
+    <h2>Update Inventory</h2>
+    <form action="/update-inventory" method="POST" id="updateForm">
+        <input type="hidden" id="update-inventoryID" name="inventoryID">
+
+        <label for="update-vendorID">Vendor:</label>
+        <select id="update-vendorID" name="vendorID" required>
+            <option value="">-- Select Vendor --</option>
+        </select><br>
+
+        <label for="update-itemID">Item:</label>
+        <select id="update-itemID" name="itemID" required>
+            <option value="">-- Select Item --</option>
+        </select><br>
+
+        <label for="update-quantity">Quantity:</label>
+        <input type="number" id="update-quantity" name="quantity" min="1" required><br>
+
+        <label for="update-condition">Condition:</label>
+        <input type="text" id="update-condition" name="condition"><br>
+
+        <label for="update-price">Price ($):</label>
+        <input type="number" id="update-price" name="price" step="0.01" min="0" required><br>
+
+        <button type="submit">Update Inventory</button>
+        <button type="button" onclick="clearUpdateForm()">Clear</button>
+    </form>
+    <p><em>Click "Edit" on an inventory record above to populate this form.</em></p>
+
+
+    <!-- DELETE INVENTORY SECTION -->
+    <h2>Delete Inventory</h2>
+    <p><em>Click "Delete" button next to an inventory record in the table above.</em></p>
+
+
+    <script>
+        // Load dropdown data and inventory when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadDropdowns();
+            await loadInventories();
+        });
+
+        // Load vendors and items for dropdowns
+        async function loadDropdowns() {
+            try {
+                // Load vendors
+                const vendorsResponse = await fetch('/api/vendors-dropdown');
+                const vendors = await vendorsResponse.json();
+
+                const vendorSelects = document.querySelectorAll('#add-vendorID, #update-vendorID');
+                vendorSelects.forEach(select => {
+                    vendors.forEach(vendor => {
+                        const option = document.createElement('option');
+                        option.value = vendor.vendorID;
+                        option.textContent = vendor.name;
+                        select.appendChild(option);
+                    });
+                });
+
+                // Load items
+                const itemsResponse = await fetch('/api/items-dropdown');
+                const items = await itemsResponse.json();
+
+                const itemSelects = document.querySelectorAll('#add-itemID, #update-itemID');
+                itemSelects.forEach(select => {
+                    items.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.itemID;
+                        option.textContent = item.name;
+                        select.appendChild(option);
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading dropdowns:', error);
+            }
+        }
+
+        // Load inventory data
+        async function loadInventories() {
+            try {
+                const response = await fetch('/api/inventories');
+                const inventories = await response.json();
+
+                const tbody = document.getElementById('inventories-table-body');
+                tbody.innerHTML = ''; // Clear loading message
+
+                inventories.forEach(inv => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${inv.inventoryID}</td>
+                        <td>${escapeHtml(inv.vendorName)}</td>
+                        <td>${escapeHtml(inv.itemName)}</td>
+                        <td>${inv.quantity}</td>
+                        <td>${escapeHtml(inv.item_condition || '')}</td>
+                        <td>$${parseFloat(inv.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td>
+                            <button onclick="populateUpdateForm(${inv.inventoryID}, ${inv.vendorID}, ${inv.itemID}, ${inv.quantity}, '${escapeHtml(inv.item_condition)}', ${inv.price})">Edit</button>
+                            <button class="delete-btn" onclick="confirmDelete(${inv.inventoryID}, '${escapeHtml(inv.vendorName)}', '${escapeHtml(inv.itemName)}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading inventories:', error);
+                document.getElementById('inventories-table-body').innerHTML = '<tr><td colspan="7">Error loading inventory from database</td></tr>';
+            }
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Populate the Update form
+        function populateUpdateForm(inventoryID, vendorID, itemID, quantity, condition, price) {
+            document.getElementById('update-inventoryID').value = inventoryID;
+            document.getElementById('update-vendorID').value = vendorID;
+            document.getElementById('update-itemID').value = itemID;
+            document.getElementById('update-quantity').value = quantity;
+            document.getElementById('update-condition').value = condition;
+            document.getElementById('update-price').value = price;
+
+            document.getElementById('updateForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Clear the Update form
+        function clearUpdateForm() {
+            document.getElementById('updateForm').reset();
+        }
+
+        // Confirm deletion
+        function confirmDelete(inventoryID, vendorName, itemName) {
+            if (confirm(`Are you sure you want to delete this inventory record?\n\nVendor: ${vendorName}\nItem: ${itemName}`)) {
+                alert(`Delete functionality will be implemented in Step 4-5. Would delete inventory ID: ${inventoryID}`);
+            }
+        }
+    </script>
+
+</body>
+</html>
+<!--
+ * Citation: Adapted from CS340 Activity 2 with
+ * assistance from Claude AI
+ * Date: 11/07/2025
+-->

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendors - Comic-Con Vendor Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #666;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        form {
+            background-color: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        label {
+            display: inline-block;
+            width: 150px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="number"] {
+            width: 300px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .delete-btn {
+            background-color: #f44336;
+        }
+        .delete-btn:hover {
+            background-color: #da190b;
+        }
+        .nav {
+            background-color: #333;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            display: inline-block;
+        }
+        .nav a:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <div class="nav">
+        <a href="index.html">Home</a>
+        <a href="items.html">Items</a>
+        <a href="vendors.html">Vendors</a>
+        <a href="events.html">Events</a>
+        <a href="inventories.html">Inventories</a>
+        <a href="vendorevents.html">Vendor Events</a>
+    </div>
+
+    <h1>Vendors Management</h1>
+    <p>Manage vendors who sell items at conventions.</p>
+
+    <!-- BROWSE VENDORS SECTION -->
+    <h2>Browse Vendors</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>City</th>
+                <th>Email</th>
+                <th>Rating</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="vendors-table-body">
+            <tr><td colspan="6">Loading vendors...</td></tr>
+        </tbody>
+    </table>
+
+
+    <!-- Add New Vendor -->
+    <h2>Add New Vendor</h2>
+    <form id="add-vendor-form">
+        <label for="add-name">Name:</label>
+        <input type="text" id="add-name" name="name" required><br>
+
+        <label for="add-city">City:</label>
+        <input type="text" id="add-city" name="city"><br>
+
+        <label for="add-email">Email:</label>
+        <input type="email" id="add-email" name="email" required><br>
+
+        <label for="add-rating">Rating (0-5):</label>
+        <input type="number" id="add-rating" name="rating" min="0" max="5" step="0.1"><br>
+
+        <button type="submit">Add Vendor</button>
+    </form>
+    <div id="add-message" style="margin-top: 10px;"></div>
+
+
+    <!-- UPDATE VENDOR SECTION -->
+    <h2>Update Vendor</h2>
+    <form id="update-vendor-form">
+        <input type="hidden" id="update-vendorID" name="vendorID">
+
+        <label for="update-name">Name:</label>
+        <input type="text" id="update-name" name="name" required><br>
+
+        <label for="update-city">City:</label>
+        <input type="text" id="update-city" name="city"><br>
+
+        <label for="update-email">Email:</label>
+        <input type="email" id="update-email" name="email" required><br>
+
+        <label for="update-rating">Rating (0-5):</label>
+        <input type="number" id="update-rating" name="rating" min="0" max="5" step="0.1"><br>
+
+        <button type="submit">Update Vendor</button>
+        <button type="button" onclick="clearUpdateForm()">Clear</button>
+    </form>
+    <div id="update-message" style="margin-top: 10px;"></div>
+    <p><em>Click "Edit" on a vendor above to populate this form.</em></p>
+
+
+    <!-- DELETE VENDOR SECTION -->
+    <h2>Delete Vendor</h2>
+    <p><em>Click "Delete" button next to a vendor in the table above.</em></p>
+
+
+    <script>
+        // Fetch vendors from database when page loads
+        async function loadVendors() {
+            try {
+                const response = await fetch('/api/vendors');
+                const vendors = await response.json();
+
+                const tbody = document.getElementById('vendors-table-body');
+                tbody.innerHTML = ''; // Clear loading message
+
+                vendors.forEach(vendor => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${vendor.vendorID}</td>
+                        <td>${escapeHtml(vendor.name)}</td>
+                        <td>${escapeHtml(vendor.city || '')}</td>
+                        <td>${escapeHtml(vendor.email)}</td>
+                        <td>${vendor.rating ? Number(vendor.rating).toFixed(1) : 'N/A'}</td>
+                        <td>
+                            <button onclick="populateUpdateForm(${vendor.vendorID}, '${escapeHtml(vendor.name)}', '${escapeHtml(vendor.city)}', '${escapeHtml(vendor.email)}', ${vendor.rating})">Edit</button>
+                            <button class="delete-btn" onclick="confirmDelete(${vendor.vendorID}, '${escapeHtml(vendor.name)}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading vendors:', error);
+                document.getElementById('vendors-table-body').innerHTML = '<tr><td colspan="6">Error loading vendors from database</td></tr>';
+            }
+        }
+
+        // Load vendors when page loads
+        document.addEventListener('DOMContentLoaded', loadVendors);
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Populate the Update form when user clicks "Edit"
+        function populateUpdateForm(id, name, city, email, rating) {
+            document.getElementById('update-vendorID').value = id;
+            document.getElementById('update-name').value = name;
+            document.getElementById('update-city').value = city;
+            document.getElementById('update-email').value = email;
+            document.getElementById('update-rating').value = rating;
+
+            document.getElementById('update-vendor-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Clear the Update form
+        function clearUpdateForm() {
+            document.getElementById('update-vendor-form').reset();
+            document.getElementById('update-message').textContent = '';
+        }
+
+        // Confirm deletion
+        function confirmDelete(id, name) {
+            if (confirm(`Are you sure you want to delete "${name}"? This will also remove all related inventory and event records.`)) {
+                alert(`Delete functionality will be implemented soon. Would delete vendor ID: ${id}`);
+            }
+        }
+    </script>
+
+    <script>
+    // Handle Add Vendor Form Submission
+    document.getElementById('add-vendor-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = {
+            name: document.getElementById('add-name').value,
+            city: document.getElementById('add-city').value,
+            email: document.getElementById('add-email').value,
+            rating: document.getElementById('add-rating').value || null
+        };
+
+        try {
+            const response = await fetch('/api/vendors', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                document.getElementById('add-message').textContent = result.message;
+                document.getElementById('add-message').style.color = 'green';
+                document.getElementById('add-vendor-form').reset();
+                loadVendors();
+                setTimeout(() => {
+                    document.getElementById('add-message').textContent = '';
+                }, 3000);
+            } else {
+                document.getElementById('add-message').textContent = 'Error: ' + (result.error || 'Unknown error');
+                document.getElementById('add-message').style.color = 'red';
+            }
+        } catch (error) {
+            console.error('Error adding vendor:', error);
+            document.getElementById('add-message').textContent = 'Error adding vendor';
+            document.getElementById('add-message').style.color = 'red';
+        }
+    });
+
+    // Handle Update Vendor Form Submission
+    document.getElementById('update-vendor-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const vendorID = document.getElementById('update-vendorID').value;
+        const formData = {
+            name: document.getElementById('update-name').value,
+            city: document.getElementById('update-city').value,
+            email: document.getElementById('update-email').value,
+            rating: document.getElementById('update-rating').value || null
+        };
+
+        try {
+            const response = await fetch(`/api/vendors/${vendorID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                document.getElementById('update-message').textContent = result.message;
+                document.getElementById('update-message').style.color = 'green';
+                document.getElementById('update-vendor-form').reset();
+                loadVendors();
+                setTimeout(() => {
+                    document.getElementById('update-message').textContent = '';
+                }, 3000);
+            } else {
+                document.getElementById('update-message').textContent = 'Error: ' + (result.error || 'Unknown error');
+                document.getElementById('update-message').style.color = 'red';
+            }
+        } catch (error) {
+            console.error('Error updating vendor:', error);
+            document.getElementById('update-message').textContent = 'Error updating vendor';
+            document.getElementById('update-message').style.color = 'red';
+        }
+    });
+    </script>
+
+</body>
+</html>
+<!--
+ * Citation: Adapted from CS340 Activity 2 with
+ * assistance from Claude AI
+ * Date: 11/07/2025
+-->

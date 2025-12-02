@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Items - Comic-Con Vendor Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #666;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        form {
+            background-color: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        label {
+            display: inline-block;
+            width: 150px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="number"],
+        input[type="url"] {
+            width: 300px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .delete-btn {
+            background-color: #f44336;
+        }
+        .delete-btn:hover {
+            background-color: #da190b;
+        }
+        .nav {
+            background-color: #333;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .nav a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            display: inline-block;
+        }
+        .nav a:hover {
+            background-color: #555;
+        }
+        .url-cell {
+            max-width: 250px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .url-cell a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .url-cell a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <div class="nav">
+        <a href="index.html">Home</a>
+        <a href="items.html">Items</a>
+        <a href="vendors.html">Vendors</a>
+        <a href="events.html">Events</a>
+        <a href="inventories.html">Inventories</a>
+        <a href="vendorevents.html">Vendor Events</a>
+    </div>
+
+    <h1>Items Management</h1>
+    <p>Manage collectible items available at conventions.</p>
+
+    <!-- BROWSE ITEMS SECTION -->
+    <h2>Browse Items</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Series</th>
+                <th>Edition</th>
+                <th>Image URL</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="items-table-body">
+            <tr><td colspan="7">Loading items...</td></tr>
+        </tbody>
+    </table>
+
+
+    <!-- Add New Item -->
+    <h2>Add New Item</h2>
+    <form id="add-item-form">
+        <label for="add-name">Name:</label>
+        <input type="text" id="add-name" name="name" required><br>
+
+        <label for="add-category">Category:</label>
+        <input type="text" id="add-category" name="category"><br>
+
+        <label for="add-series">Series:</label>
+        <input type="text" id="add-series" name="series"><br>
+
+        <label for="add-edition">Edition:</label>
+        <input type="text" id="add-edition" name="edition"><br>
+
+        <label for="add-imageURL">Image URL:</label>
+        <input type="text" id="add-imageURL" name="imageURL"><br>
+
+        <button type="submit">Add Item</button>
+    </form>
+    <div id="add-message" style="margin-top: 10px;"></div>
+
+
+    <!-- UPDATE ITEM SECTION -->
+    <h2>Update Item</h2>
+    <form id="update-item-form">
+        <input type="hidden" id="update-itemID" name="itemID">
+
+        <label for="update-name">Name:</label>
+        <input type="text" id="update-name" name="name" required><br>
+
+        <label for="update-category">Category:</label>
+        <input type="text" id="update-category" name="category"><br>
+
+        <label for="update-series">Series:</label>
+        <input type="text" id="update-series" name="series"><br>
+
+        <label for="update-edition">Edition:</label>
+        <input type="text" id="update-edition" name="edition"><br>
+
+        <label for="update-imageURL">Image URL:</label>
+        <input type="url" id="update-imageURL" name="imageURL"><br>
+
+        <button type="submit">Update Item</button>
+        <button type="button" onclick="clearUpdateForm()">Clear</button>
+    </form>
+    <div id="update-message" style="margin-top: 10px;"></div>
+    <p><em>Click "Edit" on an item above to populate this form.</em></p>
+
+
+    <!-- DELETE ITEM SECTION -->
+    <h2>Delete Item</h2>
+    <p><em>Click "Delete" button next to an item in the table above.</em></p>
+
+
+    <script>
+        // Fetch items from database when page loads
+        async function loadItems() {
+            try {
+                const response = await fetch('/api/items');
+                const items = await response.json();
+
+                const tbody = document.getElementById('items-table-body');
+                tbody.innerHTML = ''; // Clear loading message
+
+                items.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.itemID}</td>
+                        <td>${escapeHtml(item.name)}</td>
+                        <td>${escapeHtml(item.category || '')}</td>
+                        <td>${escapeHtml(item.series || '')}</td>
+                        <td>${escapeHtml(item.edition || '')}</td>
+                        <td class="url-cell">
+                            <a href="${escapeHtml(item.imageURL)}" target="_blank" title="${escapeHtml(item.imageURL)}">
+                                ${escapeHtml(item.imageURL)}
+                            </a>
+                        </td>
+                        <td>
+                            <button onclick="populateUpdateForm(${item.itemID}, '${escapeHtml(item.name)}', '${escapeHtml(item.category)}', '${escapeHtml(item.series)}', '${escapeHtml(item.edition)}', '${escapeHtml(item.imageURL)}')">Edit</button>
+                            <button class="delete-btn" onclick="confirmDelete(${item.itemID}, '${escapeHtml(item.name)}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading items:', error);
+                document.getElementById('items-table-body').innerHTML = '<tr><td colspan="7">Error loading items from database</td></tr>';
+            }
+        }
+
+        // Load items when page loads
+        document.addEventListener('DOMContentLoaded', loadItems);
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Populate the Update form when user clicks "Edit"
+        function populateUpdateForm(id, name, category, series, edition, imageURL) {
+            document.getElementById('update-itemID').value = id;
+            document.getElementById('update-name').value = name;
+            document.getElementById('update-category').value = category;
+            document.getElementById('update-series').value = series;
+            document.getElementById('update-edition').value = edition;
+            document.getElementById('update-imageURL').value = imageURL;
+
+            document.getElementById('update-item-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Clear the Update form
+        function clearUpdateForm() {
+            document.getElementById('update-item-form').reset();
+            document.getElementById('update-message').textContent = '';
+        }
+
+        // Confirm deletion
+        function confirmDelete(id, name) {
+            if (confirm(`Are you sure you want to delete "${name}"? This will also remove all inventory records for this item.`)) {
+                alert(`Delete functionality will be implemented soon. Would delete item ID: ${id}`);
+            }
+        }
+    </script>
+
+    <script>
+    // Handle Add Item Form Submission
+    document.getElementById('add-item-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = {
+            name: document.getElementById('add-name').value,
+            category: document.getElementById('add-category').value,
+            series: document.getElementById('add-series').value,
+            edition: document.getElementById('add-edition').value,
+            imageURL: document.getElementById('add-imageURL').value
+        };
+
+        try {
+            const response = await fetch('/api/items', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Show success message
+                document.getElementById('add-message').textContent = result.message;
+                document.getElementById('add-message').style.color = 'green';
+
+                // Clear the form
+                document.getElementById('add-item-form').reset();
+
+                // Reload the table to show new item
+                loadItems();
+
+                // Clear message after 3 seconds
+                setTimeout(() => {
+                    document.getElementById('add-message').textContent = '';
+                }, 3000);
+            } else {
+                document.getElementById('add-message').textContent = 'Error: ' + (result.error || 'Unknown error');
+                document.getElementById('add-message').style.color = 'red';
+            }
+        } catch (error) {
+            console.error('Error adding item:', error);
+            document.getElementById('add-message').textContent = 'Error adding item';
+            document.getElementById('add-message').style.color = 'red';
+        }
+    });
+
+    // Handle Update Item Form Submission
+    document.getElementById('update-item-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const itemID = document.getElementById('update-itemID').value;
+        const formData = {
+            name: document.getElementById('update-name').value,
+            category: document.getElementById('update-category').value,
+            series: document.getElementById('update-series').value,
+            edition: document.getElementById('update-edition').value,
+            imageURL: document.getElementById('update-imageURL').value
+        };
+
+        try {
+            const response = await fetch(`/api/items/${itemID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Show success message
+                document.getElementById('update-message').textContent = result.message;
+                document.getElementById('update-message').style.color = 'green';
+
+                // Clear the form
+                document.getElementById('update-item-form').reset();
+
+                // Reload the table to show updated item
+                loadItems();
+
+                // Clear message after 3 seconds
+                setTimeout(() => {
+                    document.getElementById('update-message').textContent = '';
+                }, 3000);
+            } else {
+                document.getElementById('update-message').textContent = 'Error: ' + (result.error || 'Unknown error');
+                document.getElementById('update-message').style.color = 'red';
+            }
+        } catch (error) {
+            console.error('Error updating item:', error);
+            document.getElementById('update-message').textContent = 'Error updating item';
+            document.getElementById('update-message').style.color = 'red';
+        }
+    });
+    </script>
+
+</body>
+</html>
+<!--
+ * Citation: Adapted from CS340 Activity 2 with
+ * assistance from Claude AI
+ * Date: 11/07/2025
+-->
