@@ -4,8 +4,8 @@ Showcase of some of my academic and professional work.
 All code files are exampled representations of actual live code between my course work and industry code.
 
 # Academic
-All the academic code files so far is a version of a mostly developed database and front end for CS340 Introduction to Databases. It is currently still under developement
-but its latest version has all the UI pages built with most CRUD functionaltiy to them. As well it uses Node.js route handlers to handle all queries ran on a hosted
+All the academic code files so far is a version of a mostly developed database and front end for CS340 Introduction to Databases. It is currently finished with its 
+latest version containing all the UI pages built with most CRUD functionaltiy to them. As well it uses Node.js route handlers to handle all queries ran on a hosted
 database. 
 
 # Industry Profession
