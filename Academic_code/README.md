@@ -11,8 +11,6 @@
 
 The Comic-Con Vendor Tracker is a full-stack web application designed to help collectors locate specific collectible items and discover which vendors will offer them at upcoming comic conventions and trade shows. The system manages relationships between items, vendors, events, and inventory through a normalized relational database.
 
-**Live Application:** http://classwork.engr.oregonstate.edu:9124
-
 ---
 
 ## Technology Stack
