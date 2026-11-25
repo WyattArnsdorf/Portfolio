@@ -1,3 +1,26 @@
+<!--
+ * Citation for HTML Structure and Base Styling:
+ * Date: 11/07/2025
+ * Adapted from: CS340 Activity 2 starter code
+ * Source: CS 340 course materials, Oregon State University
+ *
+ * Citation for AI Assistance:
+ * Date: 11/07/2025
+ * AI Tool: Claude (Anthropic)
+ * Source URL: https://claude.ai/
+ * Prompts used:
+ *   - "Help me create an HTML page for my CS340 project that displays Items from
+ *      my database with a table showing itemID, name, category, series, edition,
+ *      and imageURL"
+ *   - "Add a form to this page that lets users insert a new item into the Items table"
+ *   - "How do I use JavaScript fetch to send form data to my Express backend?"
+ * AI assistance used for: Initial HTML table structure, form layout with proper input
+ * types, basic fetch API syntax for GET/POST requests, and CSS styling for navigation
+ * and tables
+ * Original work: Database integration logic, entity-specific field names and attributes,
+ * error handling, form validation, and adaptation to our Comic-Con Vendor Tracker schema
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -102,6 +125,7 @@
         <a href="events.html">Events</a>
         <a href="inventories.html">Inventories</a>
         <a href="vendorevents.html">Vendor Events</a>
+        <a href="/reset-database" style="background-color: #e74c3c;">RESET Database</a>
     </div>
 
     <h1>Vendors Management</h1>
@@ -195,7 +219,7 @@
                         <td>${vendor.rating ? Number(vendor.rating).toFixed(1) : 'N/A'}</td>
                         <td>
                             <button onclick="populateUpdateForm(${vendor.vendorID}, '${escapeHtml(vendor.name)}', '${escapeHtml(vendor.city)}', '${escapeHtml(vendor.email)}', ${vendor.rating})">Edit</button>
-                            <button class="delete-btn" onclick="confirmDelete(${vendor.vendorID}, '${escapeHtml(vendor.name)}')">Delete</button>
+                            <button class="delete-btn" onclick="deleteVendor(${vendor.vendorID}, '${escapeHtml(vendor.name)}')">Delete</button>
                         </td>
                     `;
                     tbody.appendChild(row);
@@ -234,10 +258,28 @@
             document.getElementById('update-message').textContent = '';
         }
 
-        // Confirm deletion
-        function confirmDelete(id, name) {
-            if (confirm(`Are you sure you want to delete "${name}"? This will also remove all related inventory and event records.`)) {
-                alert(`Delete functionality will be implemented soon. Would delete vendor ID: ${id}`);
+        // Delete vendor
+        async function deleteVendor(id, name) {
+            if (!confirm(`Are you sure you want to delete "${name}"? This will also remove all related inventory and event records.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/vendors/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                    loadVendors(); // Reload the table
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error deleting vendor:', error);
+                alert('Error deleting vendor');
             }
         }
     </script>
@@ -329,8 +371,3 @@
 
 </body>
 </html>
-<!--
- * Citation: Adapted from CS340 Activity 2 with
- * assistance from Claude AI
- * Date: 11/07/2025
--->

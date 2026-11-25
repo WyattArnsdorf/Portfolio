@@ -1,3 +1,23 @@
+<!--
+ * Citation for HTML Structure and Base Styling:
+ * Date: 11/15/2025
+ * Adapted from: items.html and vendors.html (created for this project)
+ *
+ * Citation for AI Assistance:
+ * Date: 11/15/2025
+ * AI Tool: Claude (Anthropic)
+ * Source URL: https://claude.ai/
+ * Prompts used:
+ *   - "I need to create a page for my Inventories table which is an M:M relationship
+ *      between Vendors and Items. How do I populate dropdown menus from my database?"
+ *   - "Help me add UPDATE and DELETE functionality to my existing table"
+ * AI assistance used for: Dropdown population from API endpoints, UPDATE form
+ * pre-population logic, and DELETE confirmation dialogs
+ * Original work: M:M relationship implementation, adapted CRUD patterns from other
+ * entity pages, integration with Inventories-specific backend routes, and handling
+ * of foreign key relationships through dropdowns
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -102,17 +122,18 @@
         <a href="events.html">Events</a>
         <a href="inventories.html">Inventories</a>
         <a href="vendorevents.html">Vendor Events</a>
+        <a href="/reset-database" style="background-color: #e74c3c;">RESET Database</a>
     </div>
 
-    <h1>Inventory Management</h1>
-    <p>Manage which vendors sell which items.</p>
+    <h1>Inventories Management</h1>
+    <p>Track which vendors sell which items and at what price.</p>
 
     <!-- BROWSE INVENTORIES SECTION -->
-    <h2>Browse Inventory</h2>
+    <h2>Browse Inventories</h2>
     <table>
         <thead>
             <tr>
-                <th>Inventory ID</th>
+                <th>ID</th>
                 <th>Vendor</th>
                 <th>Item</th>
                 <th>Quantity</th>
@@ -122,115 +143,127 @@
             </tr>
         </thead>
         <tbody id="inventories-table-body">
-            <tr><td colspan="7">Loading inventory...</td></tr>
+            <tr><td colspan="7">Loading inventories...</td></tr>
         </tbody>
     </table>
 
 
-    <!-- ADD INVENTORY SECTION -->
-    <h2>Add to Inventory</h2>
-    <form action="/add-inventory" method="POST">
+    <!-- Add New Inventory -->
+    <h2>Add New Inventory</h2>
+    <form id="add-inventory-form">
         <label for="add-vendorID">Vendor:</label>
         <select id="add-vendorID" name="vendorID" required>
-            <option value="">-- Select Vendor --</option>
+            <option value="">Select Vendor</option>
         </select><br>
 
         <label for="add-itemID">Item:</label>
         <select id="add-itemID" name="itemID" required>
-            <option value="">-- Select Item --</option>
+            <option value="">Select Item</option>
         </select><br>
 
         <label for="add-quantity">Quantity:</label>
-        <input type="number" id="add-quantity" name="quantity" min="1" required><br>
+        <input type="number" id="add-quantity" name="quantity" min="0" required><br>
 
         <label for="add-condition">Condition:</label>
-        <input type="text" id="add-condition" name="condition" placeholder="e.g., CGC 9.8, PSA 10, Near Mint"><br>
+        <input type="text" id="add-condition" name="item_condition"><br>
 
         <label for="add-price">Price ($):</label>
-        <input type="number" id="add-price" name="price" step="0.01" min="0" required><br>
+        <input type="number" id="add-price" name="price" min="0" step="0.01"><br>
 
-        <button type="submit">Add to Inventory</button>
+        <button type="submit">Add Inventory</button>
     </form>
+    <div id="add-message" style="margin-top: 10px;"></div>
 
 
     <!-- UPDATE INVENTORY SECTION -->
     <h2>Update Inventory</h2>
-    <form action="/update-inventory" method="POST" id="updateForm">
+    <form id="update-inventory-form">
         <input type="hidden" id="update-inventoryID" name="inventoryID">
 
         <label for="update-vendorID">Vendor:</label>
         <select id="update-vendorID" name="vendorID" required>
-            <option value="">-- Select Vendor --</option>
+            <option value="">Select Vendor</option>
         </select><br>
 
         <label for="update-itemID">Item:</label>
         <select id="update-itemID" name="itemID" required>
-            <option value="">-- Select Item --</option>
+            <option value="">Select Item</option>
         </select><br>
 
         <label for="update-quantity">Quantity:</label>
-        <input type="number" id="update-quantity" name="quantity" min="1" required><br>
+        <input type="number" id="update-quantity" name="quantity" min="0" required><br>
 
         <label for="update-condition">Condition:</label>
-        <input type="text" id="update-condition" name="condition"><br>
+        <input type="text" id="update-condition" name="item_condition"><br>
 
         <label for="update-price">Price ($):</label>
-        <input type="number" id="update-price" name="price" step="0.01" min="0" required><br>
+        <input type="number" id="update-price" name="price" min="0" step="0.01"><br>
 
         <button type="submit">Update Inventory</button>
         <button type="button" onclick="clearUpdateForm()">Clear</button>
     </form>
-    <p><em>Click "Edit" on an inventory record above to populate this form.</em></p>
+    <div id="update-message" style="margin-top: 10px;"></div>
+    <p><em>Click "Edit" on an inventory row above to populate this form.</em></p>
 
 
     <!-- DELETE INVENTORY SECTION -->
     <h2>Delete Inventory</h2>
-    <p><em>Click "Delete" button next to an inventory record in the table above.</em></p>
+    <p><em>Click "Delete" button next to an inventory row in the table above.</em></p>
 
 
     <script>
-        // Load dropdown data and inventory when page loads
+        // Load dropdowns when page loads
         document.addEventListener('DOMContentLoaded', async function() {
             await loadDropdowns();
             await loadInventories();
         });
 
-        // Load vendors and items for dropdowns
+        // Load vendor and item dropdowns
         async function loadDropdowns() {
             try {
-                // Load vendors
+                // Load vendors dropdown
                 const vendorsResponse = await fetch('/api/vendors-dropdown');
                 const vendors = await vendorsResponse.json();
 
-                const vendorSelects = document.querySelectorAll('#add-vendorID, #update-vendorID');
-                vendorSelects.forEach(select => {
-                    vendors.forEach(vendor => {
-                        const option = document.createElement('option');
-                        option.value = vendor.vendorID;
-                        option.textContent = vendor.name;
-                        select.appendChild(option);
-                    });
+                const addVendorSelect = document.getElementById('add-vendorID');
+                const updateVendorSelect = document.getElementById('update-vendorID');
+
+                vendors.forEach(vendor => {
+                    const option1 = document.createElement('option');
+                    option1.value = vendor.vendorID;
+                    option1.textContent = vendor.name;
+                    addVendorSelect.appendChild(option1);
+
+                    const option2 = document.createElement('option');
+                    option2.value = vendor.vendorID;
+                    option2.textContent = vendor.name;
+                    updateVendorSelect.appendChild(option2);
                 });
 
-                // Load items
+                // Load items dropdown
                 const itemsResponse = await fetch('/api/items-dropdown');
                 const items = await itemsResponse.json();
 
-                const itemSelects = document.querySelectorAll('#add-itemID, #update-itemID');
-                itemSelects.forEach(select => {
-                    items.forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item.itemID;
-                        option.textContent = item.name;
-                        select.appendChild(option);
-                    });
+                const addItemSelect = document.getElementById('add-itemID');
+                const updateItemSelect = document.getElementById('update-itemID');
+
+                items.forEach(item => {
+                    const option1 = document.createElement('option');
+                    option1.value = item.itemID;
+                    option1.textContent = item.name;
+                    addItemSelect.appendChild(option1);
+
+                    const option2 = document.createElement('option');
+                    option2.value = item.itemID;
+                    option2.textContent = item.name;
+                    updateItemSelect.appendChild(option2);
                 });
             } catch (error) {
                 console.error('Error loading dropdowns:', error);
             }
         }
 
-        // Load inventory data
+        // Fetch inventories from database
         async function loadInventories() {
             try {
                 const response = await fetch('/api/inventories');
@@ -247,17 +280,17 @@
                         <td>${escapeHtml(inv.itemName)}</td>
                         <td>${inv.quantity}</td>
                         <td>${escapeHtml(inv.item_condition || '')}</td>
-                        <td>$${parseFloat(inv.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td>$${inv.price ? Number(inv.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}</td>
                         <td>
                             <button onclick="populateUpdateForm(${inv.inventoryID}, ${inv.vendorID}, ${inv.itemID}, ${inv.quantity}, '${escapeHtml(inv.item_condition)}', ${inv.price})">Edit</button>
-                            <button class="delete-btn" onclick="confirmDelete(${inv.inventoryID}, '${escapeHtml(inv.vendorName)}', '${escapeHtml(inv.itemName)}')">Delete</button>
+                            <button class="delete-btn" onclick="deleteInventory(${inv.inventoryID}, '${escapeHtml(inv.vendorName)}', '${escapeHtml(inv.itemName)}')">Delete</button>
                         </td>
                     `;
                     tbody.appendChild(row);
                 });
             } catch (error) {
                 console.error('Error loading inventories:', error);
-                document.getElementById('inventories-table-body').innerHTML = '<tr><td colspan="7">Error loading inventory from database</td></tr>';
+                document.getElementById('inventories-table-body').innerHTML = '<tr><td colspan="7">Error loading inventories from database</td></tr>';
             }
         }
 
@@ -269,35 +302,136 @@
             return div.innerHTML;
         }
 
-        // Populate the Update form
-        function populateUpdateForm(inventoryID, vendorID, itemID, quantity, condition, price) {
-            document.getElementById('update-inventoryID').value = inventoryID;
+        // Populate the Update form when user clicks "Edit"
+        function populateUpdateForm(id, vendorID, itemID, quantity, condition, price) {
+            document.getElementById('update-inventoryID').value = id;
             document.getElementById('update-vendorID').value = vendorID;
             document.getElementById('update-itemID').value = itemID;
             document.getElementById('update-quantity').value = quantity;
             document.getElementById('update-condition').value = condition;
             document.getElementById('update-price').value = price;
 
-            document.getElementById('updateForm').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('update-inventory-form').scrollIntoView({ behavior: 'smooth' });
         }
 
         // Clear the Update form
         function clearUpdateForm() {
-            document.getElementById('updateForm').reset();
+            document.getElementById('update-inventory-form').reset();
+            document.getElementById('update-message').textContent = '';
         }
 
-        // Confirm deletion
-        function confirmDelete(inventoryID, vendorName, itemName) {
-            if (confirm(`Are you sure you want to delete this inventory record?\n\nVendor: ${vendorName}\nItem: ${itemName}`)) {
-                alert(`Delete functionality will be implemented in Step 4-5. Would delete inventory ID: ${inventoryID}`);
+        // Delete inventory
+        async function deleteInventory(id, vendorName, itemName) {
+            if (!confirm(`Are you sure you want to delete the inventory record for "${itemName}" from "${vendorName}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/inventories/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                    loadInventories(); // Reload the table
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error deleting inventory:', error);
+                alert('Error deleting inventory');
             }
         }
     </script>
 
+    <script>
+    // Handle Add Inventory Form Submission
+    document.getElementById('add-inventory-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = {
+            vendorID: document.getElementById('add-vendorID').value,
+            itemID: document.getElementById('add-itemID').value,
+            quantity: document.getElementById('add-quantity').value,
+            item_condition: document.getElementById('add-condition').value,
+            price: document.getElementById('add-price').value || null
+        };
+
+        try {
+            const response = await fetch('/api/inventories', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                document.getElementById('add-message').textContent = result.message;
+                document.getElementById('add-message').style.color = 'green';
+                document.getElementById('add-inventory-form').reset();
+                loadInventories();
+                setTimeout(() => {
+                    document.getElementById('add-message').textContent = '';
+                }, 3000);
+            } else {
+                document.getElementById('add-message').textContent = 'Error: ' + (result.error || 'Unknown error');
+                document.getElementById('add-message').style.color = 'red';
+            }
+        } catch (error) {
+            console.error('Error adding inventory:', error);
+            document.getElementById('add-message').textContent = 'Error adding inventory';
+            document.getElementById('add-message').style.color = 'red';
+        }
+    });
+
+    // Handle Update Inventory Form Submission
+    document.getElementById('update-inventory-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const inventoryID = document.getElementById('update-inventoryID').value;
+        const formData = {
+            vendorID: document.getElementById('update-vendorID').value,
+            itemID: document.getElementById('update-itemID').value,
+            quantity: document.getElementById('update-quantity').value,
+            item_condition: document.getElementById('update-condition').value,
+            price: document.getElementById('update-price').value || null
+        };
+
+        try {
+            const response = await fetch(`/api/inventories/${inventoryID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                document.getElementById('update-message').textContent = result.message;
+                document.getElementById('update-message').style.color = 'green';
+                document.getElementById('update-inventory-form').reset();
+                loadInventories();
+                setTimeout(() => {
+                    document.getElementById('update-message').textContent = '';
+                }, 3000);
+            } else {
+                document.getElementById('update-message').textContent = 'Error: ' + (result.error || 'Unknown error');
+                document.getElementById('update-message').style.color = 'red';
+            }
+        } catch (error) {
+            console.error('Error updating inventory:', error);
+            document.getElementById('update-message').textContent = 'Error updating inventory';
+            document.getElementById('update-message').style.color = 'red';
+        }
+    });
+    </script>
+
 </body>
 </html>
-<!--
- * Citation: Adapted from CS340 Activity 2 with
- * assistance from Claude AI
- * Date: 11/07/2025
--->

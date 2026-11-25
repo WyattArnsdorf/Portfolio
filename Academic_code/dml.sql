@@ -1,3 +1,8 @@
+-- Citation: DML queries authored by Brian Merritt and Wyatt Arnsdorf
+-- Based on CS 340 course materials
+-- Date: 11/07/2025
+-- Queries use parameterized syntax with @ placeholders for backend integration
+
 -- ITEMS TABLE
 
 -- Browse all items
@@ -181,5 +186,3 @@ SELECT eventID, name, date
 FROM Events
 ORDER BY date DESC;
 
-/******Citations*******/
--- All work is based of course material from CS 340

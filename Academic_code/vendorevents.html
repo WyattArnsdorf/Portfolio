@@ -1,3 +1,23 @@
+<!--
+ * Citation for HTML Structure and Base Styling:
+ * Date: 11/07/2025
+ * Adapted from: items.html, vendors.html, and inventories.html (created for this project)
+ *
+ * Citation for AI Assistance:
+ * Date: 12/06/2025
+ * AI Tool: Claude (Anthropic)
+ * Source URL: https://claude.ai/
+ * Prompts used:
+ *   - "I need to add CRUD functionality for my Events and VendorEvents tables to
+ *      complete my project. Show me how to adapt my existing patterns"
+ * AI assistance used for: Replicating established CRUD patterns for new entities,
+ * date formatting for HTML5 date inputs, and composite key handling in VendorEvents
+ * UPDATE/DELETE routes
+ * Original work: All entity-specific logic, form field selection based on database
+ * schema, integration with stored procedure-based backend, and M:M relationship
+ * handling for VendorEvents
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -101,13 +121,14 @@
         <a href="events.html">Events</a>
         <a href="inventories.html">Inventories</a>
         <a href="vendorevents.html">Vendor Events</a>
+        <a href="/reset-database" style="background-color: #e74c3c;">RESET Database</a>
     </div>
 
     <h1>Vendor Events Management</h1>
-    <p>Track which vendors attend which events and their booth assignments.</p>
+    <p>Track which vendors attend which events and their booth assignments (M:M Relationship).</p>
 
     <!-- BROWSE VENDOR EVENTS SECTION -->
-    <h2>Browse Vendor-Event Registrations</h2>
+    <h2>Browse Vendor Events</h2>
     <table>
         <thead>
             <tr>
@@ -124,100 +145,96 @@
     </table>
 
 
-    <!-- ADD VENDOR TO EVENT SECTION -->
-    <h2>Register Vendor for Event</h2>
-    <form action="/add-vendorevent" method="POST">
+    <!-- Add New Vendor Event -->
+    <h2>Add New Vendor Event</h2>
+    <form id="add-vendorevent-form">
         <label for="add-vendorID">Vendor:</label>
         <select id="add-vendorID" name="vendorID" required>
-            <option value="">-- Select Vendor --</option>
+            <option value="">Select Vendor</option>
         </select><br>
 
         <label for="add-eventID">Event:</label>
         <select id="add-eventID" name="eventID" required>
-            <option value="">-- Select Event --</option>
+            <option value="">Select Event</option>
         </select><br>
 
         <label for="add-boothNumber">Booth Number:</label>
-        <input type="text" id="add-boothNumber" name="boothNumber" placeholder="e.g., A-12, 315, Table-5"><br>
+        <input type="text" id="add-boothNumber" name="boothNumber"><br>
 
-        <button type="submit">Register Vendor</button>
+        <button type="submit">Add Vendor Event</button>
     </form>
+    <div id="add-message" style="margin-top: 10px;"></div>
 
 
     <!-- UPDATE VENDOR EVENT SECTION -->
-    <h2>Update Vendor-Event Registration</h2>
-    <form action="/update-vendorevent" method="POST" id="updateForm">
-        <input type="hidden" id="update-vendorID-old" name="vendorID_old">
-        <input type="hidden" id="update-eventID-old" name="eventID_old">
+    <h2>Update Vendor Event</h2>
+    <form id="update-vendorevent-form">
+        <input type="hidden" id="update-vendorID" name="vendorID">
+        <input type="hidden" id="update-eventID" name="eventID">
 
-        <label for="update-vendorID">Vendor:</label>
-        <select id="update-vendorID" name="vendorID" required>
-            <option value="">-- Select Vendor --</option>
-        </select><br>
+        <label for="update-vendor-display">Vendor:</label>
+        <input type="text" id="update-vendor-display" disabled><br>
 
-        <label for="update-eventID">Event:</label>
-        <select id="update-eventID" name="eventID" required>
-            <option value="">-- Select Event --</option>
-        </select><br>
+        <label for="update-event-display">Event:</label>
+        <input type="text" id="update-event-display" disabled><br>
 
         <label for="update-boothNumber">Booth Number:</label>
         <input type="text" id="update-boothNumber" name="boothNumber"><br>
 
-        <button type="submit">Update Registration</button>
+        <button type="submit">Update Vendor Event</button>
         <button type="button" onclick="clearUpdateForm()">Clear</button>
     </form>
-    <p><em>Click "Edit" on a registration above to populate this form.</em></p>
+    <div id="update-message" style="margin-top: 10px;"></div>
+    <p><em>Click "Edit" on a vendor event above to populate this form. Note: You can only update the booth number, not the vendor/event relationship.</em></p>
 
 
-    <!-- DELETE VENDOR FROM EVENT SECTION -->
-    <h2>Remove Vendor from Event</h2>
-    <p><em>Click "Delete" button next to a registration in the table above.</em></p>
+    <!-- DELETE VENDOR EVENT SECTION -->
+    <h2>Delete Vendor Event</h2>
+    <p><em>Click "Delete" button next to a vendor event in the table above to remove the M:M relationship.</em></p>
 
 
     <script>
-        // Load dropdown data and vendor events when page loads
+        // Load dropdowns when page loads
         document.addEventListener('DOMContentLoaded', async function() {
             await loadDropdowns();
             await loadVendorEvents();
         });
 
-        // Load vendors and events for dropdowns
+        // Load vendor and event dropdowns
         async function loadDropdowns() {
             try {
-                // Load vendors
+                // Load vendors dropdown
                 const vendorsResponse = await fetch('/api/vendors-dropdown');
                 const vendors = await vendorsResponse.json();
 
-                const vendorSelects = document.querySelectorAll('#add-vendorID, #update-vendorID');
-                vendorSelects.forEach(select => {
-                    vendors.forEach(vendor => {
-                        const option = document.createElement('option');
-                        option.value = vendor.vendorID;
-                        option.textContent = vendor.name;
-                        select.appendChild(option);
-                    });
+                const addVendorSelect = document.getElementById('add-vendorID');
+
+                vendors.forEach(vendor => {
+                    const option = document.createElement('option');
+                    option.value = vendor.vendorID;
+                    option.textContent = vendor.name;
+                    addVendorSelect.appendChild(option);
                 });
 
-                // Load events
+                // Load events dropdown
                 const eventsResponse = await fetch('/api/events-dropdown');
                 const events = await eventsResponse.json();
 
-                const eventSelects = document.querySelectorAll('#add-eventID, #update-eventID');
-                eventSelects.forEach(select => {
-                    events.forEach(event => {
-                        const option = document.createElement('option');
-                        option.value = event.eventID;
-                        const dateStr = event.date ? new Date(event.date).toLocaleDateString() : '';
-                        option.textContent = `${event.name} (${dateStr})`;
-                        select.appendChild(option);
-                    });
+                const addEventSelect = document.getElementById('add-eventID');
+
+                events.forEach(event => {
+                    const option = document.createElement('option');
+                    option.value = event.eventID;
+                    const eventDate = event.date ? new Date(event.date).toLocaleDateString('en-US') : '';
+                    option.textContent = `${event.name} (${eventDate})`;
+                    addEventSelect.appendChild(option);
                 });
             } catch (error) {
                 console.error('Error loading dropdowns:', error);
             }
         }
 
-        // Load vendor events data
+        // Fetch vendor events from database
         async function loadVendorEvents() {
             try {
                 const response = await fetch('/api/vendorevents');
@@ -228,15 +245,15 @@
 
                 vendorEvents.forEach(ve => {
                     const row = document.createElement('tr');
-                    const dateStr = ve.eventDate ? new Date(ve.eventDate).toLocaleDateString() : 'N/A';
+                    const formattedDate = ve.eventDate ? new Date(ve.eventDate).toLocaleDateString('en-US') : '';
                     row.innerHTML = `
                         <td>${escapeHtml(ve.vendorName)}</td>
                         <td>${escapeHtml(ve.eventName)}</td>
-                        <td>${dateStr}</td>
+                        <td>${formattedDate}</td>
                         <td>${escapeHtml(ve.boothNumber || '')}</td>
                         <td>
-                            <button onclick="populateUpdateForm(${ve.vendorID}, ${ve.eventID}, '${escapeHtml(ve.boothNumber)}')">Edit</button>
-                            <button class="delete-btn" onclick="confirmDelete(${ve.vendorID}, ${ve.eventID}, '${escapeHtml(ve.vendorName)}', '${escapeHtml(ve.eventName)}')">Delete</button>
+                            <button onclick="populateUpdateForm(${ve.vendorID}, ${ve.eventID}, '${escapeHtml(ve.vendorName)}', '${escapeHtml(ve.eventName)}', '${escapeHtml(ve.boothNumber)}')">Edit</button>
+                            <button class="delete-btn" onclick="deleteVendorEvent(${ve.vendorID}, ${ve.eventID}, '${escapeHtml(ve.vendorName)}', '${escapeHtml(ve.eventName)}')">Delete</button>
                         </td>
                     `;
                     tbody.appendChild(row);
@@ -255,34 +272,130 @@
             return div.innerHTML;
         }
 
-        // Populate the Update form
-        function populateUpdateForm(vendorID, eventID, boothNumber) {
-            document.getElementById('update-vendorID-old').value = vendorID;
-            document.getElementById('update-eventID-old').value = eventID;
+        // Populate the Update form when user clicks "Edit"
+        function populateUpdateForm(vendorID, eventID, vendorName, eventName, boothNumber) {
             document.getElementById('update-vendorID').value = vendorID;
             document.getElementById('update-eventID').value = eventID;
+            document.getElementById('update-vendor-display').value = vendorName;
+            document.getElementById('update-event-display').value = eventName;
             document.getElementById('update-boothNumber').value = boothNumber;
 
-            document.getElementById('updateForm').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('update-vendorevent-form').scrollIntoView({ behavior: 'smooth' });
         }
 
         // Clear the Update form
         function clearUpdateForm() {
-            document.getElementById('updateForm').reset();
+            document.getElementById('update-vendorevent-form').reset();
+            document.getElementById('update-message').textContent = '';
         }
 
-        // Confirm deletion
-        function confirmDelete(vendorID, eventID, vendorName, eventName) {
-            if (confirm(`Are you sure you want to remove "${vendorName}" from "${eventName}"?`)) {
-                alert(`Delete functionality will be implemented in Step 4-5. Would delete vendor ${vendorID} from event ${eventID}`);
+        // Delete vendor event (M:M relationship)
+        async function deleteVendorEvent(vendorID, eventID, vendorName, eventName) {
+            if (!confirm(`Are you sure you want to remove ${vendorName} from ${eventName}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/vendorevents/${vendorID}/${eventID}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                    loadVendorEvents(); // Reload the table
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error deleting vendor event:', error);
+                alert('Error deleting vendor event');
             }
         }
     </script>
 
+    <script>
+    // Handle Add Vendor Event Form Submission
+    document.getElementById('add-vendorevent-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = {
+            vendorID: document.getElementById('add-vendorID').value,
+            eventID: document.getElementById('add-eventID').value,
+            boothNumber: document.getElementById('add-boothNumber').value
+        };
+
+        try {
+            const response = await fetch('/api/vendorevents', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                document.getElementById('add-message').textContent = result.message;
+                document.getElementById('add-message').style.color = 'green';
+                document.getElementById('add-vendorevent-form').reset();
+                loadVendorEvents();
+                setTimeout(() => {
+                    document.getElementById('add-message').textContent = '';
+                }, 3000);
+            } else {
+                document.getElementById('add-message').textContent = 'Error: ' + (result.error || 'Unknown error');
+                document.getElementById('add-message').style.color = 'red';
+            }
+        } catch (error) {
+            console.error('Error adding vendor event:', error);
+            document.getElementById('add-message').textContent = 'Error adding vendor event';
+            document.getElementById('add-message').style.color = 'red';
+        }
+    });
+
+    // Handle Update Vendor Event Form Submission
+    document.getElementById('update-vendorevent-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const vendorID = document.getElementById('update-vendorID').value;
+        const eventID = document.getElementById('update-eventID').value;
+        const formData = {
+            boothNumber: document.getElementById('update-boothNumber').value
+        };
+
+        try {
+            const response = await fetch(`/api/vendorevents/${vendorID}/${eventID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                document.getElementById('update-message').textContent = result.message;
+                document.getElementById('update-message').style.color = 'green';
+                document.getElementById('update-vendorevent-form').reset();
+                loadVendorEvents();
+                setTimeout(() => {
+                    document.getElementById('update-message').textContent = '';
+                }, 3000);
+            } else {
+                document.getElementById('update-message').textContent = 'Error: ' + (result.error || 'Unknown error');
+                document.getElementById('update-message').style.color = 'red';
+            }
+        } catch (error) {
+            console.error('Error updating vendor event:', error);
+            document.getElementById('update-message').textContent = 'Error updating vendor event';
+            document.getElementById('update-message').style.color = 'red';
+        }
+    });
+    </script>
+
 </body>
 </html>
-<!--
- * Citation: Adapted from CS340 Activity 2 with
- * assistance from Claude AI
- * Date: 11/07/2025
--->

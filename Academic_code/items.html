@@ -1,3 +1,26 @@
+<!--
+ * Citation for HTML Structure and Base Styling:
+ * Date: 11/07/2025
+ * Adapted from: CS340 Activity 2 starter code
+ * Source: CS 340 course materials, Oregon State University
+ *
+ * Citation for AI Assistance:
+ * Date: 11/07/2025
+ * AI Tool: Claude (Anthropic)
+ * Source URL: https://claude.ai/
+ * Prompts used:
+ *   - "Help me create an HTML page for my CS340 project that displays Items from
+ *      my database with a table showing itemID, name, category, series, edition,
+ *      and imageURL"
+ *   - "Add a form to this page that lets users insert a new item into the Items table"
+ *   - "How do I use JavaScript fetch to send form data to my Express backend?"
+ * AI assistance used for: Initial HTML table structure, form layout with proper input
+ * types, basic fetch API syntax for GET/POST requests, and CSS styling for navigation
+ * and tables
+ * Original work: Database integration logic, entity-specific field names and attributes,
+ * error handling, form validation, and adaptation to our Comic-Con Vendor Tracker schema
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -115,6 +138,7 @@
         <a href="events.html">Events</a>
         <a href="inventories.html">Inventories</a>
         <a href="vendorevents.html">Vendor Events</a>
+        <a href="/reset-database" style="background-color: #e74c3c;">RESET Database</a>
     </div>
 
     <h1>Items Management</h1>
@@ -220,7 +244,7 @@
                         </td>
                         <td>
                             <button onclick="populateUpdateForm(${item.itemID}, '${escapeHtml(item.name)}', '${escapeHtml(item.category)}', '${escapeHtml(item.series)}', '${escapeHtml(item.edition)}', '${escapeHtml(item.imageURL)}')">Edit</button>
-                            <button class="delete-btn" onclick="confirmDelete(${item.itemID}, '${escapeHtml(item.name)}')">Delete</button>
+                            <button class="delete-btn" onclick="deleteItem(${item.itemID}, '${escapeHtml(item.name)}')">Delete</button>
                         </td>
                     `;
                     tbody.appendChild(row);
@@ -260,10 +284,28 @@
             document.getElementById('update-message').textContent = '';
         }
 
-        // Confirm deletion
-        function confirmDelete(id, name) {
-            if (confirm(`Are you sure you want to delete "${name}"? This will also remove all inventory records for this item.`)) {
-                alert(`Delete functionality will be implemented soon. Would delete item ID: ${id}`);
+        // Delete item
+        async function deleteItem(id, name) {
+            if (!confirm(`Are you sure you want to delete "${name}"? This will also remove all inventory records for this item.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/items/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                    loadItems(); // Reload the table
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error deleting item:', error);
+                alert('Error deleting item');
             }
         }
     </script>
@@ -293,17 +335,10 @@
             const result = await response.json();
 
             if (response.ok) {
-                // Show success message
                 document.getElementById('add-message').textContent = result.message;
                 document.getElementById('add-message').style.color = 'green';
-
-                // Clear the form
                 document.getElementById('add-item-form').reset();
-
-                // Reload the table to show new item
                 loadItems();
-
-                // Clear message after 3 seconds
                 setTimeout(() => {
                     document.getElementById('add-message').textContent = '';
                 }, 3000);
@@ -343,17 +378,10 @@
             const result = await response.json();
 
             if (response.ok) {
-                // Show success message
                 document.getElementById('update-message').textContent = result.message;
                 document.getElementById('update-message').style.color = 'green';
-
-                // Clear the form
                 document.getElementById('update-item-form').reset();
-
-                // Reload the table to show updated item
                 loadItems();
-
-                // Clear message after 3 seconds
                 setTimeout(() => {
                     document.getElementById('update-message').textContent = '';
                 }, 3000);
@@ -371,8 +399,3 @@
 
 </body>
 </html>
-<!--
- * Citation: Adapted from CS340 Activity 2 with
- * assistance from Claude AI
- * Date: 11/07/2025
--->

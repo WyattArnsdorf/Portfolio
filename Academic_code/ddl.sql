@@ -1,6 +1,13 @@
 -- OSU CS340 Intro to Databases
 -- Comicon vendor inventory tracker DB
 -- PL/SQL to drop procedure
+
+
+-- Citation: Database schema designed by Brian Merritt and Wyatt Arnsdorf
+-- Based on course materials from CS 340 (i.e. sp_moviedb.sql for step 4) - Introduction to Databases
+-- Date: 11/07/2025
+-- Generated using MySQL Workbench 8.0 CE with manual edits
+
 DROP PROCEDURE  IF EXISTS sp_load_comiconTrackerdb;
 DELIMITER //
 CREATE PROCEDURE sp_load_comiconTrackerdb()
@@ -126,6 +133,3 @@ END //
 
 DELIMITER ;
 -- CALL sp_load_comiconTrackerdb()
-
-/******Citations*******/
--- All work is based of course material from CS 340

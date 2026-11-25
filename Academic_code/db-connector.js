@@ -1,3 +1,9 @@
+/*
+ * Citation: Adapted from CS340 starter code
+ * Date: 11/07/2025
+ * Source: CS 340 course materials, Oregon State University
+ */
+
 // Get an instance of mysql we can use in the app
 const mysql = require('mysql2');
 
@@ -5,14 +11,11 @@ const mysql = require('mysql2');
 const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10,
-    host: '[domain]',
-    user: 'cs340_[ONID]',
-    password: '[your_db_password]',
-    database: 'cs340_[ONID]'
+    host: 'classmysql.engr.oregonstate.edu',
+    user: 'cs340_merrittb',
+    password: '6908',
+    database: 'cs340_merrittb'
 }).promise();
 
 // Export it for use in application
 module.exports = pool;
-
-/******Citations*******/
-/* All work is based of course material from CS 340*/

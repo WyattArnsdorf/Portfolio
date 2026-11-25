@@ -1,3 +1,23 @@
+<!--
+ * Citation for HTML Structure and Base Styling:
+ * Date: 11/07/2025
+ * Adapted from: items.html, vendors.html, and inventories.html (created for this project)
+ *
+ * Citation for AI Assistance:
+ * Date: 12/06/2025
+ * AI Tool: Claude (Anthropic)
+ * Source URL: https://claude.ai/
+ * Prompts used:
+ *   - "I need to add CRUD functionality for my Events and VendorEvents tables to
+ *      complete my project. Show me how to adapt my existing patterns"
+ * AI assistance used for: Replicating established CRUD patterns for new entities,
+ * date formatting for HTML5 date inputs, and composite key handling in VendorEvents
+ * UPDATE/DELETE routes
+ * Original work: All entity-specific logic, form field selection based on database
+ * schema, integration with stored procedure-based backend, and M:M relationship
+ * handling for VendorEvents
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -102,10 +122,11 @@
         <a href="events.html">Events</a>
         <a href="inventories.html">Inventories</a>
         <a href="vendorevents.html">Vendor Events</a>
+        <a href="/reset-database" style="background-color: #e74c3c;">RESET Database</a>
     </div>
 
     <h1>Events Management</h1>
-    <p>Manage comic conventions and collectible shows.</p>
+    <p>Manage conventions and events where vendors sell collectibles.</p>
 
     <!-- BROWSE EVENTS SECTION -->
     <h2>Browse Events</h2>
@@ -126,10 +147,10 @@
     </table>
 
 
-    <!-- ADD EVENT SECTION -->
+    <!-- Add New Event -->
     <h2>Add New Event</h2>
-    <form action="/add-event" method="POST">
-        <label for="add-name">Event Name:</label>
+    <form id="add-event-form">
+        <label for="add-name">Name:</label>
         <input type="text" id="add-name" name="name" required><br>
 
         <label for="add-location">Location:</label>
@@ -139,18 +160,19 @@
         <input type="date" id="add-date" name="date" required><br>
 
         <label for="add-attendance">Attendance:</label>
-        <input type="number" id="add-attendance" name="attendance" min="0" placeholder="Leave blank if unknown"><br>
+        <input type="number" id="add-attendance" name="attendance" min="0"><br>
 
         <button type="submit">Add Event</button>
     </form>
+    <div id="add-message" style="margin-top: 10px;"></div>
 
 
     <!-- UPDATE EVENT SECTION -->
     <h2>Update Event</h2>
-    <form action="/update-event" method="POST" id="updateForm">
+    <form id="update-event-form">
         <input type="hidden" id="update-eventID" name="eventID">
 
-        <label for="update-name">Event Name:</label>
+        <label for="update-name">Name:</label>
         <input type="text" id="update-name" name="name" required><br>
 
         <label for="update-location">Location:</label>
@@ -165,6 +187,7 @@
         <button type="submit">Update Event</button>
         <button type="button" onclick="clearUpdateForm()">Clear</button>
     </form>
+    <div id="update-message" style="margin-top: 10px;"></div>
     <p><em>Click "Edit" on an event above to populate this form.</em></p>
 
 
@@ -175,7 +198,7 @@
 
     <script>
         // Fetch events from database when page loads
-        document.addEventListener('DOMContentLoaded', async function() {
+        async function loadEvents() {
             try {
                 const response = await fetch('/api/events');
                 const events = await response.json();
@@ -185,15 +208,16 @@
 
                 events.forEach(event => {
                     const row = document.createElement('tr');
+                    const formattedDate = event.date ? new Date(event.date).toLocaleDateString('en-US') : '';
                     row.innerHTML = `
                         <td>${event.eventID}</td>
                         <td>${escapeHtml(event.name)}</td>
                         <td>${escapeHtml(event.location)}</td>
-                        <td>${event.date ? new Date(event.date).toLocaleDateString() : 'N/A'}</td>
-                        <td>${event.attendance ? event.attendance.toLocaleString() : 'N/A'}</td>
+                        <td>${formattedDate}</td>
+                        <td>${event.attendance || 'N/A'}</td>
                         <td>
-                            <button onclick="populateUpdateForm(${event.eventID}, '${escapeHtml(event.name)}', '${escapeHtml(event.location)}', '${event.date}', ${event.attendance || 'null'})">Edit</button>
-                            <button class="delete-btn" onclick="confirmDelete(${event.eventID}, '${escapeHtml(event.name)}')">Delete</button>
+                            <button onclick="populateUpdateForm(${event.eventID}, '${escapeHtml(event.name)}', '${escapeHtml(event.location)}', '${event.date}', ${event.attendance})">Edit</button>
+                            <button class="delete-btn" onclick="deleteEvent(${event.eventID}, '${escapeHtml(event.name)}')">Delete</button>
                         </td>
                     `;
                     tbody.appendChild(row);
@@ -202,7 +226,10 @@
                 console.error('Error loading events:', error);
                 document.getElementById('events-table-body').innerHTML = '<tr><td colspan="6">Error loading events from database</td></tr>';
             }
-        });
+        }
+
+        // Load events when page loads
+        document.addEventListener('DOMContentLoaded', loadEvents);
 
         // Helper function to escape HTML
         function escapeHtml(text) {
@@ -217,30 +244,133 @@
             document.getElementById('update-eventID').value = id;
             document.getElementById('update-name').value = name;
             document.getElementById('update-location').value = location;
-            document.getElementById('update-date').value = date ? date.split('T')[0] : '';
-            document.getElementById('update-attendance').value = attendance || '';
+            // Format date for input field (YYYY-MM-DD)
+            if (date) {
+                const dateObj = new Date(date);
+                const formattedDate = dateObj.toISOString().split('T')[0];
+                document.getElementById('update-date').value = formattedDate;
+            }
+            document.getElementById('update-attendance').value = attendance;
 
-            document.getElementById('updateForm').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('update-event-form').scrollIntoView({ behavior: 'smooth' });
         }
 
         // Clear the Update form
         function clearUpdateForm() {
-            document.getElementById('updateForm').reset();
+            document.getElementById('update-event-form').reset();
+            document.getElementById('update-message').textContent = '';
         }
 
-        // Confirm deletion
-        function confirmDelete(id, name) {
-            if (confirm(`Are you sure you want to delete "${name}"? This will also remove all vendor registrations for this event.`)) {
-                alert(`Delete functionality will be implemented in Step 4-5. Would delete event ID: ${id}`);
+        // Delete event
+        async function deleteEvent(id, name) {
+            if (!confirm(`Are you sure you want to delete "${name}"? This will also remove all related vendor event records.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/events/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                    loadEvents(); // Reload the table
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error deleting event:', error);
+                alert('Error deleting event');
             }
         }
     </script>
 
+    <script>
+    // Handle Add Event Form Submission
+    document.getElementById('add-event-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = {
+            name: document.getElementById('add-name').value,
+            location: document.getElementById('add-location').value,
+            date: document.getElementById('add-date').value,
+            attendance: document.getElementById('add-attendance').value || null
+        };
+
+        try {
+            const response = await fetch('/api/events', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                document.getElementById('add-message').textContent = result.message;
+                document.getElementById('add-message').style.color = 'green';
+                document.getElementById('add-event-form').reset();
+                loadEvents();
+                setTimeout(() => {
+                    document.getElementById('add-message').textContent = '';
+                }, 3000);
+            } else {
+                document.getElementById('add-message').textContent = 'Error: ' + (result.error || 'Unknown error');
+                document.getElementById('add-message').style.color = 'red';
+            }
+        } catch (error) {
+            console.error('Error adding event:', error);
+            document.getElementById('add-message').textContent = 'Error adding event';
+            document.getElementById('add-message').style.color = 'red';
+        }
+    });
+
+    // Handle Update Event Form Submission
+    document.getElementById('update-event-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const eventID = document.getElementById('update-eventID').value;
+        const formData = {
+            name: document.getElementById('update-name').value,
+            location: document.getElementById('update-location').value,
+            date: document.getElementById('update-date').value,
+            attendance: document.getElementById('update-attendance').value || null
+        };
+
+        try {
+            const response = await fetch(`/api/events/${eventID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                document.getElementById('update-message').textContent = result.message;
+                document.getElementById('update-message').style.color = 'green';
+                document.getElementById('update-event-form').reset();
+                loadEvents();
+                setTimeout(() => {
+                    document.getElementById('update-message').textContent = '';
+                }, 3000);
+            } else {
+                document.getElementById('update-message').textContent = 'Error: ' + (result.error || 'Unknown error');
+                document.getElementById('update-message').style.color = 'red';
+            }
+        } catch (error) {
+            console.error('Error updating event:', error);
+            document.getElementById('update-message').textContent = 'Error updating event';
+            document.getElementById('update-message').style.color = 'red';
+        }
+    });
+    </script>
+
 </body>
 </html>
-
-<!--
- * Citation: Adapted from CS340 Activity 2 with
- * assistance from Claude AI
- * Date: 11/07/2025
--->
