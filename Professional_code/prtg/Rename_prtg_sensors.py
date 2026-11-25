@@ -3,11 +3,6 @@ import time
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
-##################################################################
-#
-#
-#
-##################################################################
 def get_all_sensors():
     count="20000"
     url = "<url>"
@@ -27,11 +22,6 @@ def get_all_sensors():
         print(f'response status code: {response.status_code}', response.content)
 
 
-##################################################################
-#
-#
-#
-##################################################################
 def organize_sensors(group_substr, name_substr, file):
     #Full Sensor List
     full_tree = ET.parse(file)
@@ -69,11 +59,6 @@ def organize_sensors(group_substr, name_substr, file):
     return sensors_by_group, huaweis_in_group
 
 
-##################################################################
-#
-#
-#
-##################################################################
 def output_to_xml_file(sensors, file):
     total_count = ET.SubElement(sensors, 'total_count')
     total_count.text = str(len(sensors) - 1)
@@ -87,11 +72,6 @@ def output_to_xml_file(sensors, file):
         f.write(pretty_xml)
 
 
-##################################################################
-#
-#
-#
-##################################################################
 def rename(filtered_sensors, old_substr, new_substr):
     root = ET.Element('sensors')
     sensor_items = ['objid', 'name', 'group', 'device', 'sensor', 'status', 'status_raw', 'notifiesx']
@@ -109,11 +89,7 @@ def rename(filtered_sensors, old_substr, new_substr):
 
     return root
 
-##################################################################
-#
-#
-#
-##################################################################
+
 def push_api(request_root):
     url = "<url>"
     i = 0
@@ -153,11 +129,7 @@ def push_api(request_root):
 
         time.sleep(1)
 
-##################################################################
-#
-#
-#
-##################################################################
+
 def main():
     date = '6-16-25'
     file = f'{date}/all_sensors_{date}.xml'
